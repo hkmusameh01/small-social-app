@@ -1,22 +1,17 @@
-import React from 'react'
-import { useSelector } from 'react-redux'
+import React, { useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import { Link } from 'react-router-dom'
+
+import { selectAllPosts, fetchPosts } from './postsSlice'
 
 import PostAuthor from './PostAuthor'
 import TimeAgo from './TimeAgo'
 import ReactionButtons from './ReactionButtons'
+import { Spinner } from '../../components/Spinner'
 
-const PostsList = () => {
-  // Be carfull => here is the /posts/ not allow
-  // to be mutated so make a copy and mutate
-  // the copy no the original
-  const posts = useSelector((state) => state.posts)
-
-  const orderedPosts = posts
-    .slice()
-    .sort((a, b) => b.date.localeCompare(a.date))
-
-  const renderPosts = orderedPosts.map((post) => (
+// PostExcerpt component
+const PostExcerpt = ({ post }) => {
+  return (
     <article key={post.id} className="post-excerpt">
       <h3>{post.title}</h3>
       <div>
@@ -29,12 +24,44 @@ const PostsList = () => {
         View Post
       </Link>
     </article>
-  ))
+  )
+}
+
+// PostList component
+const PostsList = () => {
+  const dispatch = useDispatch()
+
+  // Be carfull => here is the /posts/ not allow
+  // to be mutated so make a copy and mutate
+  // the copy no the original
+  const posts = useSelector(selectAllPosts)
+
+  const postStatus = useSelector((state) => state.posts.status)
+  const error = useSelector((state) => state.posts.error)
+
+  useEffect(() => {
+    if (postStatus === 'idle') dispatch(fetchPosts())
+  }, [postStatus, dispatch])
+
+  let content
+  if (postStatus === 'loading') {
+    content = <Spinner text="Loading..." />
+  } else if (postStatus === 'succeeded') {
+    const orderedPosts = posts
+      .slice()
+      .sort((a, b) => b.date.localeCompare(a.date))
+
+    content = orderedPosts.map((post) => (
+      <PostExcerpt key={post.id} post={post} />
+    ))
+  } else if (postStatus === 'error') {
+    content = <div>{error}</div>
+  }
 
   return (
     <section className="posts-list">
       <h2>Posts</h2>
-      {renderPosts}
+      {content}
     </section>
   )
 }
